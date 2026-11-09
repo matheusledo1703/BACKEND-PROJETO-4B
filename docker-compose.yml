@@ -1,0 +1,49 @@
+services:
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_SENHA:-heartbeasties123}
+      MYSQL_DATABASE: heartbeasties
+    ports:
+      - "3307:3306"
+    volumes:
+      - dados-do-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  back-end:
+    build:
+      context: .
+      dockerfile: back-end/Dockerfile
+    environment:
+      PORTA: 3000
+      DB_HOST: db
+      DB_PORTA: 3306
+      DB_NOME: heartbeasties
+      DB_USUARIO: root
+      DB_SENHA: ${DB_SENHA:-heartbeasties123}
+      JWT_SEGREDO: ${JWT_SEGREDO:-heartbeasties-segredo-de-desenvolvimento}
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+
+  front-end:
+    build:
+      context: ./front-end
+      args:
+        VITE_URL_DA_API: http://localhost:3000/api
+    ports:
+      - "8080:80"
+    depends_on:
+      - back-end
+
+volumes:
+  dados-do-mysql:
